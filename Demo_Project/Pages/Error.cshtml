@@ -1,0 +1,22 @@
+@page "/Error"
+@attribute [Microsoft.AspNetCore.Authorization.AllowAnonymous]
+@attribute [Microsoft.AspNetCore.Mvc.IgnoreAntiforgeryToken]
+@{
+    ViewData["Title"] = "Something went wrong";
+    Layout = "/Areas/Identity/Pages/Shared/_AuthLayout.cshtml";
+    var requestId = System.Diagnostics.Activity.Current?.Id ?? HttpContext.TraceIdentifier;
+}
+
+<span class="auth-icon auth-icon--danger" aria-hidden="true"><i class="fas fa-exclamation-triangle"></i></span>
+<h2>Something went wrong</h2>
+<p class="auth-lead">
+    We couldn't complete your request. Please try again in a moment.
+    If the problem continues, contact your system administrator and quote the reference below.
+</p>
+
+<div class="auth-alert auth-alert--info" role="note">
+    <i class="fas fa-hashtag" aria-hidden="true"></i>
+    <div>Reference: <strong>@requestId</strong></div>
+</div>
+
+<a class="auth-btn" href="/"><i class="fas fa-home" aria-hidden="true"></i> Back to the portal</a>

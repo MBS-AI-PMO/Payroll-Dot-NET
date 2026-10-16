@@ -1,0 +1,215 @@
+@page "/tax-certificates"
+@attribute [Authorize(Roles = "Employee")]
+
+<PageTitle>My Tax Certificates · NITB Payslip Portal</PageTitle>
+
+<div class="page-header">
+    <div>
+        <div class="page-header__eyebrow">Tax Certificate (ITC)</div>
+        <h1>My Income Tax Certificates</h1>
+        <p>Yearly certificates of salary paid and income tax deducted, for each financial year (July – June).</p>
+    </div>
+</div>
+
+@if (loading)
+{
+    <div class="stat-grid" aria-hidden="true">
+        @for (var i = 0; i < 3; i++)
+        {
+            <div class="stat-card">
+                <span class="skeleton skeleton--circle"></span>
+                <div style="flex:1"><span class="skeleton" style="width:55%"></span><span class="skeleton skeleton--lg mt-2" style="width:45%"></span></div>
+            </div>
+        }
+    </div>
+    <div class="app-card">
+        <div class="app-card__body" aria-hidden="true">
+            @for (var i = 0; i < 3; i++)
+            {
+                <div class="d-flex gap-3 align-items-center py-2">
+                    <span class="skeleton" style="width:25%"></span>
+                    <span class="skeleton" style="width:20%"></span>
+                    <span class="skeleton" style="width:15%"></span>
+                    <span class="skeleton" style="width:15%"></span>
+                </div>
+            }
+        </div>
+        <span class="visually-hidden" role="status">Loading your tax certificates…</span>
+    </div>
+}
+else if (loadFailed)
+{
+    <div class="app-card">
+        <div class="empty-state">
+            <span class="empty-state__icon is-danger"><i class="fas fa-exclamation-triangle" aria-hidden="true"></i></span>
+            <h3>We couldn't load your tax certificates</h3>
+            <p>Please try again. If the problem continues, contact your HR department.</p>
+            <button type="button" class="btn btn-primary" @onclick="LoadAsync"><i class="fas fa-redo me-1" aria-hidden="true"></i> Try again</button>
+        </div>
+    </div>
+}
+else if (!certificates.Any())
+{
+    <div class="app-card">
+        <div class="empty-state">
+            <span class="empty-state__icon"><i class="fas fa-receipt" aria-hidden="true"></i></span>
+            <h3>No tax certificates available for this employee.</h3>
+            <p>
+                @if (notLinked)
+                {
+                    <text>Your account is not yet linked to payroll records. Please contact your HR department.</text>
+                }
+                else
+                {
+                    <text>Your certificate will appear here once salary has been paid in a financial year.</text>
+                }
+            </p>
+        </div>
+    </div>
+}
+else
+{
+    var latest = certificates.First();
+
+    <div class="stat-grid">
+        <div class="stat-card">
+            <span class="stat-card__icon" aria-hidden="true"><i class="fas fa-coins"></i></span>
+            <div style="min-width:0">
+                <div class="stat-card__label">Salary paid in @latest.FinancialYear</div>
+                <div class="stat-card__value">Rs. @latest.GrossSalary.ToString("N0")</div>
+                <div class="stat-card__hint">@latest.MonthsPaid month(s)@(latest.IsInProgress ? " · year in progress" : "")</div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <span class="stat-card__icon is-warning" aria-hidden="true"><i class="fas fa-landmark"></i></span>
+            <div style="min-width:0">
+                <div class="stat-card__label">Income tax deducted in @latest.FinancialYear</div>
+                <div class="stat-card__value">Rs. @latest.IncomeTax.ToString("N0")</div>
+                <div class="stat-card__hint">Deposited with the income tax department</div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <span class="stat-card__icon is-info" aria-hidden="true"><i class="fas fa-file-alt"></i></span>
+            <div style="min-width:0">
+                <div class="stat-card__label">Certificates available</div>
+                <div class="stat-card__value">@certificates.Count</div>
+                <div class="stat-card__hint">Since @certificates.Last().FinancialYear</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="app-card">
+        <div class="app-card__header">
+            <div>
+                <h2 class="app-card__title">Certificates by financial year</h2>
+                <p class="app-card__subtitle">@certificates.Count financial year(s)</p>
+            </div>
+        </div>
+
+        <div class="data-table-wrap">
+            <table class="data-table data-table--stack">
+                <thead>
+                    <tr>
+                        <th scope="col">Financial year</th>
+                        <th scope="col">Months paid</th>
+                        <th scope="col" class="num">Salary paid</th>
+                        <th scope="col" class="num">Income tax</th>
+                        <th scope="col" class="num">Net pay</th>
+                        <th scope="col" class="actions"><span class="visually-hidden">Actions</span></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var c in certificates)
+                    {
+                        <tr>
+                            <td data-label="Financial year">
+                                <span class="cell-primary">
+                                    @c.FinancialYear
+                                    @if (c.IsInProgress)
+                                    {
+                                        <span class="pill is-info ms-1">In progress</span>
+                                    }
+                                </span>
+                                <span class="cell-secondary">@c.PeriodName</span>
+                            </td>
+                            <td data-label="Months paid">@c.MonthsPaid</td>
+                            <td data-label="Salary paid" class="num">@Money(c.GrossSalary)</td>
+                            <td data-label="Income tax" class="num">@Money(c.IncomeTax)</td>
+                            <td data-label="Net pay" class="num"><strong class="text-body">@Money(c.NetAmount)</strong></td>
+                            <td class="actions">
+                                <button type="button" class="btn btn-sm btn-light" @onclick="() => selected = c"
+                                        aria-label="View tax certificate for @c.FinancialYear">
+                                    <i class="fas fa-eye me-1" aria-hidden="true"></i> View
+                                </button>
+                                <a class="btn btn-sm btn-primary" href="@PdfUrl(c.StartYear, download: true)" download
+                                   aria-label="Download tax certificate for @c.FinancialYear" @onclick="() => OnDownload(c)">
+                                    <i class="fas fa-download me-1" aria-hidden="true"></i> Download
+                                </a>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+        <div class="app-card__footer">
+            <span><i class="fas fa-lock me-1" aria-hidden="true"></i> Only you can see these certificates.</span>
+            <span>A certificate for the current financial year shows the salary paid so far.</span>
+        </div>
+    </div>
+}
+
+@* ---------- Certificate detail dialog ---------- *@
+@if (selected != null)
+{
+    var c = selected;
+    <div class="app-dialog-backdrop" @onclick="CloseDetail" @onkeydown="OnDetailKey">
+        <div class="app-dialog app-dialog--wide" role="dialog" aria-modal="true" aria-labelledby="itc-title" @onclick:stopPropagation="true">
+            <div class="app-dialog__header">
+                <span class="stat-card__icon" aria-hidden="true"><i class="fas fa-receipt"></i></span>
+                <div>
+                    <h2 id="itc-title">Income Tax Certificate · @c.FinancialYear</h2>
+                    <p>Financial year @c.PeriodName</p>
+                </div>
+                <button type="button" class="app-dialog__close" aria-label="Close" @onclick="CloseDetail" @ref="closeButton">&times;</button>
+            </div>
+            <div class="app-dialog__body">
+                @if (c.IsInProgress)
+                {
+                    <div class="alert alert-info d-flex gap-2 align-items-start py-2" role="note">
+                        <i class="fas fa-info-circle mt-1" aria-hidden="true"></i>
+                        <div>This financial year ends on 30 June @c.EndYear. The amounts below cover the @c.MonthsPaid month(s) paid so far.</div>
+                    </div>
+                }
+
+                <div class="payslip-cols">
+                    <div class="payslip-block">
+                        <h4>Salary</h4>
+                        <div class="payslip-line"><span>Months paid</span><span>@c.MonthsPaid</span></div>
+                        <div class="payslip-line is-total"><span>Gross salary paid</span><span>@Money(c.GrossSalary)</span></div>
+                    </div>
+                    <div class="payslip-block">
+                        <h4>Deductions</h4>
+                        <div class="payslip-line"><span>Income tax (section 149)</span><span>@Money(c.IncomeTax)</span></div>
+                        <div class="payslip-line"><span>EOBI</span><span>@Money(c.Eobi)</span></div>
+                        <div class="payslip-line"><span>Advances deduction</span><span>@Money(c.AdvanceDeduction)</span></div>
+                        <div class="payslip-line is-total"><span>Total deductions</span><span>@Money(c.TotalDeductions)</span></div>
+                    </div>
+                </div>
+
+                <div class="payslip-net">
+                    <span>Net pay for the year</span>
+                    <strong>Rs. @Money(c.NetAmount)</strong>
+                </div>
+            </div>
+            <div class="app-dialog__footer">
+                <button type="button" class="btn btn-light" @onclick="CloseDetail">Close</button>
+                <a class="btn btn-light" href="@PdfUrl(c.StartYear, download: false)" target="_blank" rel="noopener">
+                    <i class="fas fa-print me-1" aria-hidden="true"></i> Print
+                </a>
+                <a class="btn btn-primary" href="@PdfUrl(c.StartYear, download: true)" download @onclick="() => OnDownload(c)">
+                    <i class="fas fa-download me-1" aria-hidden="true"></i> Download PDF
+                </a>
+            </div>
+        </div>
+    </div>
+}

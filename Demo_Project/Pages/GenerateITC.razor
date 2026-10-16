@@ -1,0 +1,38 @@
+﻿@page "/itcRequest"
+@attribute [Authorize(Roles = "Admin")]
+@using PayslipMgtSystem.Services
+@inject GenerateITCService generateItcService
+<div class="card">
+    <div class="card-header"></div>
+    <div class="card-body">
+        @if (!string.IsNullOrEmpty(message))
+        {
+            <div class="alert alert-success" role="alert">
+                @message
+            </div>
+        }
+        <table class="table table-hover table-striped">
+            <thead>
+                <tr class="bg-success text-white">
+                    <th>Year</th>
+                    <th>Request Generated</th>
+                    <th>Pdf Generatef</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var item in Items)
+                {
+                    <tr class="tr1">
+                        <td>@item.Year</td>
+                        <td>@(item.isRequestGenerated ? "Yes" : "No") </td>
+                        <td>@(item.isPdfGenerated ? "Yes" : "No") </td>
+                        <td><button type="button" class="btn btn-sm btn-success" @onclick="()=>GenerateRequestAsync(item)">Generate Request</button></td>
+                    </tr>
+                }
+
+            </tbody>
+        </table>
+
+    </div>
+</div>

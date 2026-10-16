@@ -1,0 +1,95 @@
+﻿@using PayslipMgtSystem;
+@{
+    var wrapper = IsBusy ? "overlay-wrapper" : "";
+    var overlay = IsBusy ? "overlay overlay-block rounded" : "";
+}
+
+<style>
+    .modal-header {
+        /* background-color: #00A82D; */
+        /* border-bottom:dashed 1px; */
+        /* border-color: #D1D1D1; */
+        background-color: white;
+        /* border-width:2px; */
+        border:none;
+        color: #fff;
+    }
+
+    .close {
+        color: #fff;
+        opacity: unset;
+    }
+    .modal-dialog .overlay {
+        position:relative;
+        height:unset;
+    }
+    .fa:hover{
+        cursor:pointer;
+    }
+
+
+  /*   .modal-header {
+        border-top-left-radius:100px;
+        border-top-right-radius:100px;
+    }
+    .modal-content {
+        border-top-left-radius:65px;
+        border-top-right-radius:65px;     
+        border-bottom-left-radius:65px;
+        border-bottom-right-radius:65px;
+    } */
+</style>
+
+
+<div class="modal right fade" id="@(string.IsNullOrEmpty(Id)?"modal-lg":Id)">
+    <div class="modal-dialog modal-xl" style="width:auto; @(MaxWidth!=null?"max-width:"+MaxWidth:"")">
+        @if (ShowModal)
+        {
+        <div class=" modal-content">
+            <div class="@overlay">
+                <div class="@wrapper">
+                        <div class="modal-header bg-success" style="border-bottom:2px inset;">
+                            <h4 class="modal-title" style="color:white;">@Heading</h4>
+                                <i class="fa fa-close" data-dismiss="modal" aria-label="Close"></i>
+                    </div>
+
+@*                     <Notification Content="@Error" Type="@NotificationCssClass.Danger"></Notification>
+ *@
+                    @if (IsBusy)
+                    {
+                        <div class="overlay-layer rounded bg-primary-o-20">
+                            <div class="spinner spinner-lg spinner-center spinner-success"></div>
+                        </div>
+                    }
+
+                    @ChildContent
+                </div>
+            </div>
+        </div>
+        }
+    </div>
+</div>
+
+@code{
+    [Parameter]
+    public bool ShowModal { get; set; } = false;
+
+    [Parameter]
+    public bool IsBusy { get; set; }
+
+    [Parameter]
+    public string Heading { get; set; }
+
+    [Parameter]
+    public RenderFragment ChildContent { get; set; }
+
+    [Parameter]
+    public string Error { get; set; }
+
+    [Parameter]
+    public string MaxWidth { get; set; }
+
+    [Parameter]
+    public string Id { get; set; }
+
+}

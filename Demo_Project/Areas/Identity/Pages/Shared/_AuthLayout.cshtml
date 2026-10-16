@@ -1,0 +1,72 @@
+@using System.Text.Encodings.Web
+@{
+    var toastType = TempData["ToastType"] as string;
+    var toastMessage = TempData["ToastMessage"] as string;
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@(ViewData["Title"] ?? "Sign in") · NITB HRMS Portal</title>
+    <link rel="icon" type="image/png" href="/favicon.png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet" />
+    <link href="/css/theme.css" rel="stylesheet" />
+    <link href="/css/auth.css" rel="stylesheet" />
+</head>
+<body class="auth-body">
+    <div class="auth-shell">
+        <aside class="auth-brand" aria-hidden="true">
+            <div class="brand-lockup">
+                <span class="brand-lockup__logo"><img src="/solo.png" alt="" /></span>
+                <span class="brand-lockup__name">Solochoicez · NITB</span>
+            </div>
+
+            <div class="auth-brand__headline">
+                <span class="auth-brand__eyebrow"><i class="fas fa-shield-alt"></i> Secure employee portal</span>
+                <h1>NITB HRMS Portal</h1>
+                <p>Your salary information in one secure place, available whenever you need it.</p>
+
+                <ul class="auth-features">
+                    <li>
+                        <i class="fas fa-file-invoice-dollar"></i>
+                        <div><strong>Monthly payslips</strong><span>View a detailed breakdown of every payslip.</span></div>
+                    </li>
+                    <li>
+                        <i class="fas fa-download"></i>
+                        <div><strong>Download &amp; print</strong><span>Get an official PDF copy with one click.</span></div>
+                    </li>
+                    <li>
+                        <i class="fas fa-lock"></i>
+                        <div><strong>Private by design</strong><span>Only you can see your payroll information.</span></div>
+                    </li>
+                </ul>
+            </div>
+
+            <div class="auth-brand__footer">&copy; @DateTime.Now.Year Solochoicez (Pvt) Ltd. All rights reserved.</div>
+        </aside>
+
+        <main class="auth-main">
+            <div class="auth-mobile-brand">
+                <i class="fas fa-file-invoice-dollar" aria-hidden="true"></i> NITB Payslip Portal
+            </div>
+            <div class="auth-card">
+                @RenderBody()
+            </div>
+            <div class="auth-footer">Need help? Contact your HR department.</div>
+        </main>
+    </div>
+
+    <script src="/js/app.js"></script>
+    @if (!string.IsNullOrEmpty(toastMessage))
+    {
+        <script>
+            window.appToast.show('@JavaScriptEncoder.Default.Encode(toastType ?? "info")', '@JavaScriptEncoder.Default.Encode(toastMessage)');
+        </script>
+    }
+    @RenderSection("Scripts", required: false)
+</body>
+</html>

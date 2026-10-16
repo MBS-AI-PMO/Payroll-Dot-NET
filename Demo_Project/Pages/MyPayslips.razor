@@ -1,0 +1,270 @@
+@page "/payslips"
+@using PayslipMgtSystem.Services
+@using System.Globalization
+@attribute [Authorize(Roles = "Employee")]
+
+<PageTitle>My Payslips · NITB Payslip Portal</PageTitle>
+
+<div class="page-header">
+    <div>
+        <div class="page-header__eyebrow">Payslip</div>
+        <h1>My Payslips</h1>
+        <p>View, download and print your monthly salary slips.</p>
+    </div>
+</div>
+
+@if (loading)
+{
+    <div class="stat-grid" aria-hidden="true">
+        @for (var i = 0; i < 3; i++)
+        {
+            <div class="stat-card">
+                <span class="skeleton skeleton--circle"></span>
+                <div style="flex:1"><span class="skeleton" style="width:55%"></span><span class="skeleton skeleton--lg mt-2" style="width:45%"></span></div>
+            </div>
+        }
+    </div>
+    <div class="app-card">
+        <div class="app-card__body" aria-hidden="true">
+            @for (var i = 0; i < 5; i++)
+            {
+                <div class="d-flex gap-3 align-items-center py-2">
+                    <span class="skeleton" style="width:25%"></span>
+                    <span class="skeleton" style="width:20%"></span>
+                    <span class="skeleton" style="width:15%"></span>
+                    <span class="skeleton" style="width:15%"></span>
+                </div>
+            }
+        </div>
+        <span class="visually-hidden" role="status">Loading your payslips…</span>
+    </div>
+}
+else if (loadFailed)
+{
+    <div class="app-card">
+        <div class="empty-state">
+            <span class="empty-state__icon is-danger"><i class="fas fa-exclamation-triangle" aria-hidden="true"></i></span>
+            <h3>We couldn't load your payslips</h3>
+            <p>Please try again. If the problem continues, contact your HR department.</p>
+            <button type="button" class="btn btn-primary" @onclick="LoadAsync"><i class="fas fa-redo me-1" aria-hidden="true"></i> Try again</button>
+        </div>
+    </div>
+}
+else if (!payslips.Any())
+{
+    <div class="app-card">
+        <div class="empty-state">
+            <span class="empty-state__icon"><i class="fas fa-file-invoice" aria-hidden="true"></i></span>
+            <h3>No payslips available for this employee.</h3>
+            <p>
+                @if (notLinked)
+                {
+                    <text>Your account is not yet linked to payroll records. Please contact your HR department.</text>
+                }
+                else
+                {
+                    <text>Your payslips will appear here as soon as payroll is processed.</text>
+                }
+            </p>
+        </div>
+    </div>
+}
+else
+{
+    var latest = payslips.First();
+    var ytdYear = latest.Year;
+    var ytdNet = payslips.Where(p => p.Year == ytdYear).Sum(p => (long)(p.NetAmount ?? 0));
+
+    <div class="stat-grid">
+        <div class="stat-card">
+            <span class="stat-card__icon is-success" aria-hidden="true"><i class="fas fa-wallet"></i></span>
+            <div style="min-width:0">
+                <div class="stat-card__label">Latest net pay</div>
+                <div class="stat-card__value">Rs. @Money(latest.NetAmount)</div>
+                <div class="stat-card__hint">@latest.PeriodName</div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <span class="stat-card__icon" aria-hidden="true"><i class="fas fa-calendar-check"></i></span>
+            <div style="min-width:0">
+                <div class="stat-card__label">Net pay in @ytdYear</div>
+                <div class="stat-card__value">Rs. @ytdNet.ToString("N0")</div>
+                <div class="stat-card__hint">@payslips.Count(p => p.Year == ytdYear) payslip(s)</div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <span class="stat-card__icon is-info" aria-hidden="true"><i class="fas fa-file-alt"></i></span>
+            <div style="min-width:0">
+                <div class="stat-card__label">Payslips available</div>
+                <div class="stat-card__value">@payslips.Count</div>
+                <div class="stat-card__hint">Since @payslips.Last().PeriodName</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="app-card">
+        <div class="app-card__header">
+            <div>
+                <h2 class="app-card__title">Payslip history</h2>
+                <p class="app-card__subtitle">@Filtered.Count() of @payslips.Count payslips</p>
+            </div>
+            <div class="toolbar">
+                <div class="toolbar__field">
+                    <label for="filter-year">Year</label>
+                    <select id="filter-year" class="form-select form-select-sm" @bind="selectedYear">
+                        <option value="0">All years</option>
+                        @foreach (var y in payslips.Select(p => p.Year).Distinct().OrderByDescending(y => y))
+                        {
+                            <option value="@y">@y</option>
+                        }
+                    </select>
+                </div>
+                <div class="toolbar__field">
+                    <label for="filter-month">Month</label>
+                    <select id="filter-month" class="form-select form-select-sm" @bind="selectedMonth">
+                        <option value="0">All months</option>
+                        @for (var m = 1; m <= 12; m++)
+                        {
+                            <option value="@m">@CultureInfo.CurrentCulture.DateTimeFormat.GetMonthName(m)</option>
+                        }
+                    </select>
+                </div>
+                @if (selectedYear != 0 || selectedMonth != 0)
+                {
+                    <button type="button" class="btn btn-sm btn-light" @onclick="ClearFilters">
+                        <i class="fas fa-times me-1" aria-hidden="true"></i> Clear
+                    </button>
+                }
+            </div>
+        </div>
+
+        @if (!Filtered.Any())
+        {
+            <div class="empty-state">
+                <span class="empty-state__icon"><i class="fas fa-search" aria-hidden="true"></i></span>
+                <h3>No payslips for this period</h3>
+                <p>There are no payslips matching the selected year and month.</p>
+                <button type="button" class="btn btn-light" @onclick="ClearFilters">Show all payslips</button>
+            </div>
+        }
+        else
+        {
+            <div class="data-table-wrap">
+                <table class="data-table data-table--stack">
+                    <thead>
+                        <tr>
+                            <th scope="col">Pay period</th>
+                            <th scope="col">Period end</th>
+                            <th scope="col" class="num">Gross salary</th>
+                            <th scope="col" class="num">Deductions</th>
+                            <th scope="col" class="num">Net pay</th>
+                            <th scope="col" class="actions"><span class="visually-hidden">Actions</span></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var p in Filtered)
+                        {
+                            <tr>
+                                <td data-label="Pay period">
+                                    <span class="cell-primary">@p.PeriodName</span>
+                                    <span class="cell-secondary">@p.Designation</span>
+                                </td>
+                                <td data-label="Period end">@p.PeriodEnd.ToString("dd MMM yyyy")</td>
+                                <td data-label="Gross salary" class="num">@Money(p.GrossSalary)</td>
+                                <td data-label="Deductions" class="num">@Money(p.TotalDeductions)</td>
+                                <td data-label="Net pay" class="num"><strong class="text-body">@Money(p.NetAmount)</strong></td>
+                                <td class="actions">
+                                    <button type="button" class="btn btn-sm btn-light" @onclick="() => ViewPayslip(p)" disabled="@(viewingId != null)"
+                                            aria-label="View payslip for @p.PeriodName">
+                                        @if (viewingId == p.Id)
+                                        {
+                                            <span class="btn-spinner" aria-hidden="true"></span>
+                                        }
+                                        else
+                                        {
+                                            <i class="fas fa-eye me-1" aria-hidden="true"></i>
+                                        }
+                                        View
+                                    </button>
+                                    <a class="btn btn-sm btn-primary" href="@PdfUrl(p.Id, download: true)" download
+                                       aria-label="Download payslip for @p.PeriodName" @onclick="() => OnDownload(p)">
+                                        <i class="fas fa-download me-1" aria-hidden="true"></i> Download
+                                    </a>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+            <div class="app-card__footer">
+                <span><i class="fas fa-lock me-1" aria-hidden="true"></i> Only you can see these payslips.</span>
+                <span>Amounts in Pakistani Rupees (Rs.)</span>
+            </div>
+        }
+    </div>
+}
+
+@* ---------- Payslip detail dialog ---------- *@
+@if (selected != null)
+{
+    var s = selected;
+    var totalAdditions = (s.BasicPayafterDeduction ?? 0) + (s.Arrears ?? 0) + (s.Allowances ?? 0);
+    <div class="app-dialog-backdrop" @onclick="CloseDetail" @onkeydown="OnDetailKey">
+        <div class="app-dialog app-dialog--wide" role="dialog" aria-modal="true" aria-labelledby="payslip-title" @onclick:stopPropagation="true">
+            <div class="app-dialog__header">
+                <span class="stat-card__icon" aria-hidden="true"><i class="fas fa-file-invoice-dollar"></i></span>
+                <div>
+                    <h2 id="payslip-title">Payslip · @MonthName(s.Month) @s.Year</h2>
+                    <p>Salary slip for the month of @MonthName(s.Month) @s.Year</p>
+                </div>
+                <button type="button" class="app-dialog__close" aria-label="Close" @onclick="CloseDetail" @ref="closeButton">&times;</button>
+            </div>
+            <div class="app-dialog__body">
+                <div class="payslip-head">
+                    <dl>
+                        <dt>Name</dt><dd>@s.EmployeeName</dd>
+                        <dt>Designation</dt><dd>@(s.ServiceCategory ?? "—")</dd>
+                        <dt>CNIC</dt><dd>@s.Cnic</dd>
+                    </dl>
+                    <dl>
+                        <dt>Offered salary</dt><dd>Rs. @Money(s.OfferedSalary)</dd>
+                        <dt>Days present</dt><dd>@(s.PresentDays ?? 0) / @(s.MonthDays ?? 0)</dd>
+                    </dl>
+                </div>
+
+                <div class="payslip-cols">
+                    <div class="payslip-block">
+                        <h4>Additions</h4>
+                        <div class="payslip-line"><span>Basic pay</span><span>@Money(s.BasicPayafterDeduction)</span></div>
+                        <div class="payslip-line"><span>Arrears</span><span>@Money(s.Arrears)</span></div>
+                        <div class="payslip-line"><span>Allowances</span><span>@Money(s.Allowances)</span></div>
+                        <div class="payslip-line is-total"><span>Gross salary</span><span>@Money(s.GrossSalary ?? totalAdditions)</span></div>
+                    </div>
+                    <div class="payslip-block">
+                        <h4>Deductions</h4>
+                        <div class="payslip-line"><span>Advance payments</span><span>@Money(s.AdvancesLoanDeduction)</span></div>
+                        <div class="payslip-line"><span>Leave deduction</span><span>@Money(s.LeaveDeduction)</span></div>
+                        <div class="payslip-line"><span>Income tax</span><span>@Money(s.WHITDeduction)</span></div>
+                        <div class="payslip-line"><span>EOBI</span><span>@Money(s.EOBI)</span></div>
+                        <div class="payslip-line"><span>Other</span><span>@Money(s.OtherDeduction)</span></div>
+                        <div class="payslip-line is-total"><span>Total deductions</span><span>@Money(s.TotalDeductions)</span></div>
+                    </div>
+                </div>
+
+                <div class="payslip-net">
+                    <span>Net pay</span>
+                    <strong>Rs. @Money(s.NetAmount)</strong>
+                </div>
+            </div>
+            <div class="app-dialog__footer">
+                <button type="button" class="btn btn-light" @onclick="CloseDetail">Close</button>
+                <a class="btn btn-light" href="@PdfUrl(s.Id, download: false)" target="_blank" rel="noopener">
+                    <i class="fas fa-print me-1" aria-hidden="true"></i> Print
+                </a>
+                <a class="btn btn-primary" href="@PdfUrl(s.Id, download: true)" download>
+                    <i class="fas fa-download me-1" aria-hidden="true"></i> Download PDF
+                </a>
+            </div>
+        </div>
+    </div>
+}

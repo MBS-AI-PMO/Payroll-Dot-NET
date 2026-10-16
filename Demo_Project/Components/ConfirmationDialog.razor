@@ -1,0 +1,35 @@
+﻿<div class="modal @(Visible ? "show" : "")" tabindex="-1" style="display:@(Visible ? "block" : "none")">
+    <div class="modal-dialog" style="width:auto">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Confirm Replace</h5>
+                <button type="button" class="btn-close" aria-label="Close" @onclick="OnCancel"></button>
+            </div>
+            <div class="modal-body">
+                <p>There are @RecordCount existing records. Do you want to replace them?</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" @onclick="OnCancel">Cancel</button>
+                <button type="button" class="btn btn-primary" @onclick="OnConfirm">Replace</button>
+            </div>
+        </div>
+    </div>
+@*     <div class="fade show"></div>
+ *@
+</div>
+
+@code {
+    [Parameter] public bool Visible { get; set; }
+    [Parameter] public int RecordCount { get; set; }
+    [Parameter] public EventCallback<bool> OnClose { get; set; }
+
+    private async Task OnConfirm()
+    {
+        await OnClose.InvokeAsync(true);
+    }
+
+    private async Task OnCancel()
+    {
+        await OnClose.InvokeAsync(false);
+    }
+}

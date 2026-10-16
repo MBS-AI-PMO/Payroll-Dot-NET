@@ -1,0 +1,67 @@
+﻿@page "/fileuploader"
+@attribute [Authorize(Roles = "Admin")]
+@using Microsoft.AspNetCore.Hosting
+@inject IWebHostEnvironment _environment
+
+<InputFile OnChange="HandleFileUpload" />
+
+
+@if (uploadResult != null)
+{
+    <p>Upload successful!</p>
+    <table class="table">
+        <thead>
+            <tr>
+                <th>SrNo</th>
+                <th>EmployeeName</th>
+                <th>ServiceCategory</th>
+                <th>Cnic</th>
+                <th>Email</th>
+                <th>JoiningDate</th>
+                <th>MonthDays</th>
+                <th>PresentDays</th>
+                <th>OfferedSalary</th>
+                <th>LeaveDeduction</th>
+                <th>BasicPayafterDeduction</th>
+                <th>Arrears</th>
+                <th>Allowances</th>
+                <th>AdvancesLoan</th>
+                <th>GrossSalary</th>
+                <th>AdvancesLoanDeduction</th>
+                <th>EOBI</th>
+                <th>WHDeduction</th>
+                <th>WHITDeduction</th>
+                <th>TotalDeductions</th>
+                <th>NetAmount</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var item in uploadResult)
+            {
+                <tr>
+                    <td>@item.SrNo</td>
+                    <td>@item.EmployeeName</td>
+                    <td>@item.ServiceCategory</td>
+                    <td>@item.Cnic</td>
+                    <td>@item.Email</td>
+                    <td>@item.JoinedAt.ToString("dd MMM, yyyy")</td>
+                    <td>@item.MonthDays</td>
+                    <td>@item.PresentDays</td>
+                    <td>@item.OfferedSalary</td>
+                    <td>@item.LeaveDeduction</td>
+                    <td>@item.BasicPayafterDeduction</td>
+                    <td>@item.Arrears</td>
+                    <td>@item.Allowances</td>
+                    <td>@item.AdvancesLoan</td>
+                    <td>@item.GrossSalary</td>
+                    <td>@item.AdvancesLoanDeduction</td>
+                    <td>@item.EOBI</td>
+@*                     <td>@item.WHDeduction</td>
+ *@                    <td>@item.WHITDeduction</td>
+                    <td>@item.TotalDeductions</td>
+                    <td>@item.NetAmount</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}

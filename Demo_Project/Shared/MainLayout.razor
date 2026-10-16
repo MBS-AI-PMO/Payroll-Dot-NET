@@ -1,0 +1,126 @@
+@inherits LayoutComponentBase
+@implements IDisposable
+@using Microsoft.AspNetCore.Components.Routing
+@using Microsoft.EntityFrameworkCore
+@using PayslipMgtSystem.Models
+@inject NavigationManager Navigation
+@inject AuthenticationStateProvider AuthStateProvider
+@inject IServiceScopeFactory ScopeFactory
+@inject IJSRuntime JS
+
+<PageTitle>NITB Payslip Portal</PageTitle>
+
+<div class="app-shell @(sidebarOpen ? "is-sidebar-open" : "") @(sidebarCollapsed ? "is-sidebar-collapsed" : "")">
+    <aside class="app-sidebar" id="app-sidebar" aria-label="Main navigation">
+        <NavMenu OnNavigate="CloseSidebar" OnClose="CloseSidebar" />
+    </aside>
+    <div class="app-backdrop" @onclick="CloseSidebar" aria-hidden="true"></div>
+
+    <div class="app-main">
+        <header class="app-topbar">
+            <button type="button" class="app-icon-btn app-menu-btn" @onclick="ToggleSidebar"
+                    title="@MenuButtonLabel" aria-label="@MenuButtonLabel"
+                    aria-expanded="@(sidebarOpen || !sidebarCollapsed ? "true" : "false")" aria-controls="app-sidebar">
+                <i class="fas fa-bars" aria-hidden="true"></i>
+            </button>
+            <div class="app-topbar__brand">NITB HRMS Portal</div>
+
+            <AuthorizeView>
+                <Authorized>
+                    <div class="app-user">
+                        <span class="app-user__avatar" aria-hidden="true">@Initials</span>
+                        <span class="app-user__meta">
+                            <span class="app-user__name">@DisplayName</span>
+                            <span class="app-user__role">@(context.User.IsInRole(AppRoles.Admin) ? "Administrator" : "Employee")</span>
+                        </span>
+                        <a class="app-icon-btn" href="Identity/Account/LogOut" title="Sign out" aria-label="Sign out">
+                            <i class="fas fa-sign-out-alt" aria-hidden="true"></i>
+                        </a>
+                    </div>
+                </Authorized>
+            </AuthorizeView>
+        </header>
+
+        <main class="app-content" id="main-content">
+            <ErrorBoundary @ref="errorBoundary">
+                <ChildContent>
+                    @Body
+                </ChildContent>
+                <ErrorContent>
+                    <div class="app-card">
+                        <div class="empty-state">
+                            <span class="empty-state__icon is-danger"><i class="fas fa-exclamation-triangle" aria-hidden="true"></i></span>
+                            <h3>Something went wrong</h3>
+                            <p>We couldn't complete that action. Please try again. If the problem continues, contact your system administrator.</p>
+                            <button type="button" class="btn btn-primary" @onclick="Recover">
+                                <i class="fas fa-redo me-1" aria-hidden="true"></i> Try again
+                            </button>
+                        </div>
+                    </div>
+                </ErrorContent>
+            </ErrorBoundary>
+        </main>
+    </div>
+</div>
+
+@code {
+    // Mobile: sidebar slides in over the page. Desktop: sidebar is shown unless collapsed.
+    private bool sidebarOpen;
+    private bool sidebarCollapsed;
+    private ErrorBoundary? errorBoundary;
+    private string DisplayName = "";
+    private string Initials = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        Navigation.LocationChanged += OnLocationChanged;
+
+        var user = (await AuthStateProvider.GetAuthenticationStateAsync()).User;
+        if (user.Identity?.IsAuthenticated != true)
+            return;
+
+        DisplayName = user.Identity.Name ?? "";
+        var userId = user.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        if (userId != null)
+        {
+            using var scope = ScopeFactory.CreateScope();
+            var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var name = await context.Users.AsNoTracking().Where(u => u.Id == userId).Select(u => u.Name).FirstOrDefaultAsync();
+            if (!string.IsNullOrWhiteSpace(name))
+                DisplayName = name;
+        }
+
+        var parts = DisplayName.Split(new[] { ' ', '.', '@' }, StringSplitOptions.RemoveEmptyEntries);
+        Initials = string.Concat(parts.Take(2).Select(p => char.ToUpperInvariant(p[0])));
+    }
+
+    private string MenuButtonLabel => sidebarCollapsed ? "Show navigation" : "Toggle navigation";
+
+    private async Task ToggleSidebar()
+    {
+        bool isMobile;
+        try { isMobile = await JS.InvokeAsync<bool>("appUi.isMobileLayout"); }
+        catch (JSException) { isMobile = false; }
+
+        if (isMobile)
+            sidebarOpen = !sidebarOpen;
+        else
+            sidebarCollapsed = !sidebarCollapsed;
+    }
+
+    private void CloseSidebar() => sidebarOpen = false;
+
+    private void Recover() => errorBoundary?.Recover();
+
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
+    {
+        errorBoundary?.Recover();
+        if (sidebarOpen)
+        {
+            sidebarOpen = false;
+            InvokeAsync(StateHasChanged);
+        }
+    }
+
+    public void Dispose() => Navigation.LocationChanged -= OnLocationChanged;
+}

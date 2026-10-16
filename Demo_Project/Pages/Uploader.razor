@@ -1,0 +1,481 @@
+﻿@page "/Email"
+@using PayslipMgtSystem.Components
+@inject UploadFileService uploadFileService
+@inject IWebHostEnvironment Environment
+@inject NavigationManager NavigationManager
+@inject IJSRuntime JSRuntime
+@attribute [Authorize(Roles = "Admin")]
+
+<style>
+    .input:hover {
+        cursor: pointer;
+    }
+
+    .btn:hover .email-svg {
+        fill: white;
+    }
+
+    .fixed-body {
+        position: fixed;
+        top: 0;
+        right: 0;
+        bottom: 0;
+        left: 0;
+        overflow: hidden;
+    }
+
+    .i1 {
+        cursor: pointer;
+    }
+
+        .i1:hover {
+            color: green;
+        }
+
+    .ml-5 {
+        margin-left: 20px;
+    }
+
+    .download:hover {
+        color: green;
+    }
+    /*    .line-break{
+                            -webkit-hyphens: auto;
+                            -moz-hyphens: auto;
+                            -ms-hyphens: auto;
+                            hyphens: auto;
+                        } */
+    .color-odd {
+        background-color: #F9F9F9;
+        border-radius: 0.3rem;
+        height: auto;
+        align-items: center;
+        word-break: break-all;
+    }
+
+    .color-even {
+        margin-top: 5px;
+        height: auto;
+        align-items: center;
+        word-break: break-all;
+    }
+</style>
+
+
+
+<div class="card">
+    <div class="card-body">
+        <div class="row">
+            <div class="col-4">
+                <div class="input-group input-group-sm input-group-solid" style=" background-color: #F3F6F9; border-radius: 0.28rem; width: 100%; height:40px; margin-top:2px;">
+                    <input type="search"
+                           class="form-control py-0"
+                           value="@searchQuery"
+                           id="kt_subheader_search_form"
+                           placeholder="Search..."
+                           style="font-weight: bold; color: black; opacity: 1; font-size: 0.8rem; border: 0; background-color: transparent; outline: none !important; -webkit-box-shadow: none; box-shadow: none;"
+                           @oninput="OnInput">
+                </div>
+            </div>
+            <div class="row">
+                <form>
+                    <div class="row mt-2" style="align-items:center">
+                        <p class="text-danger">@filterMessage</p>
+                        <div class="col-4">
+                            <div class="form-group">
+                                <select class="form-control input" @bind="selectedYear">
+                                    <option value="0">Select Year</option>
+                                    @foreach (var year in Enumerable.Range(DateTime.Now.Year - 10, 11))
+                                    {
+                                        <option value="@year">@year</option>
+                                    }
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div class="form-group">
+                                <select class="form-control input" @bind="selectedMonth">
+                                    <option value="0">Select Month</option>
+                                    <option value="1">January</option>
+                                    <option value="2">February</option>
+                                    <option value="3">March</option>
+                                    <option value="4">April</option>
+                                    <option value="5">May</option>
+                                    <option value="6">June</option>
+                                    <option value="7">July</option>
+                                    <option value="8">August</option>
+                                    <option value="9">September</option>
+                                    <option value="10">October</option>
+                                    <option value="11">November</option>
+                                    <option value="12">December</option>
+
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <button type="button" class="btn btn-sm btn-secondary" @onclick="YearMonthFilter">Filter</button>
+                        </div>
+                        @if(filteredFileContent != null)
+                        {
+                            <p>Total Record: @totalcount </p>
+                        }
+                    </div>
+                </form>
+            </div>
+        </div>
+        <div class="d-flex justify-content-between mt-2">
+            <div>
+                <button type="button" class="btn btn-sm mb-2 btn-success" @onclick="ToggleSelectAll">Select All</button>
+                <button class="btn btn-success btn-sm mb-2" @onclick="ShowConfirmationPopup">Generate Email Request</button>
+            </div>
+            <div>
+                <button style="margin-right:5px;" type="button" class="btn btn-outline-secondary float-right btn-sm pt-0" @onclick='()=> ExportClick("Pdf")'><i style="margin-right:5px;" class="fa fa-download"></i>Pdf</button>
+            </div>
+        </div>
+        <div class="mt-2" style="border-radius:15px;
+
+    -webkit-box-shadow: 1px -15px 22px 0px rgba(0,0,0,0.75);
+  -moz-box-shadow: 1px -15px 22px 0px rgba(0,0,0,0.75);
+   box-shadow: 1px -15px 22px 0px rgba(0,0,0,0.10);">
+            <div style="overflow-x:hidden;">
+                @if (showConfirmationPopup)
+                {
+                    <div class="modal show d-block" tabindex="-1" role="dialog">
+                        <div class="modal-dialog" role="document">
+                            <div class="modal-content shadow-lg">
+                                <div class="modal-header bg-success">
+                                    <h5 class="modal-title">Confirmation</h5>
+                                    <button type="button" class="close btn" @onclick="ClosePopup" aria-label="Close">
+                                        <span aria-hidden="true">&times;</span>
+                                    </button>
+                                </div>
+                                <div class="modal-body">
+                                    <p>Are you sure to generate the email request?</p>
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-primary" @onclick="GenerateEmailRequest">Yes</button>
+                                    <button type="button" class="btn btn-secondary" @onclick="ClosePopup">Cancel</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                }
+                @if (!string.IsNullOrEmpty(SuccessMessage))
+                {
+                    <div class="alert alert-success">
+                        @SuccessMessage
+                    </div>
+                }
+                @if (!string.IsNullOrEmpty(emailStatusMessage))
+                {
+                    <div class="alert alert-success" role="alert">
+                        @emailStatusMessage <button type="button" class="btn btn-sm float-right pt-0" @onclick="CloseMessage">x</button>
+                    </div>
+                }
+                @if (!string.IsNullOrEmpty(message))
+                {
+                    <div class="alert alert-success" role="alert">
+                        @message
+                    </div>
+                }
+                @if (filteredFileContent != null && filteredFileContent.Any())
+                {
+                    <table class="table table-hover table-striped">
+                        <thead>
+                            <tr class="bg-success text-white">
+                                <th><input type="checkbox" @bind="selectPage" @onclick="ToggleSelectPage" /></th>
+                                
+                                <th>Mail</th>
+                                <th>Name</th>
+                                <th>Designation</th>
+                                <th>CNIC</th>
+                                <th>Email</th>
+                                <th>Year</th>
+                                <th>Month</th>
+                                <th>Net Amount</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var line in filteredFileContent)
+                            {
+                                <tr class="tr1">
+                                    <td>
+                                        @if (SelectedIds.Contains(line.Id) && !RemovedIds.Contains(line.Id))
+                                        {
+                                            <input type="checkbox" checked @onclick="() => ToggleSelect(line.Id , false)" />
+                                        }
+                                        else
+                                        {
+                                            <input type="checkbox" @onclick="() => ToggleSelect(line.Id , true)" />
+                                        }
+                                    </td>
+                                    <td>
+                                        @if (!string.IsNullOrEmpty(line.Email))
+                                        {
+                                            <i class="i1 fas fa-envelope" @onclick="() => SendEmailWithPdfIndividually(line)"></i>
+                                        }
+                                        <i style="margin-left:10px;" title="Payslip" class="download fa fa-download" @onclick="() => DownloadPdf(line)"></i>
+                                    </td>
+                                    <td>@line.EmployeeName</td>
+                                    <td>@line.ServiceCategory</td>
+                                    <td>@line.Cnic</td>
+                                    <td>@line.Email</td>
+                                    <td>@line.Year</td>
+                                    <td>@line.Month</td>
+                                    <td>@(line.NetAmount == 0 ? "-" : line.NetAmount)</td>
+                                    <td>
+                                        <i class="i1 fas fa-eye pt-1" @onclick="() => ShowDetails(line)" title="View" data-toggle="modal" data-target="#modal-lg"></i>
+
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                    <Pagination TotaPagesQuantity="Epagination.TotalPages" TotalCount="@totalcount" CurrentPage="Epagination.currentPage" Radius="2"
+                                SelectedPage="SelectedPage" ShowrecordTable="@dTO.QuantityPerPage"></Pagination>
+                }
+                else if (fileContent == null)
+                {
+                    <p>No data loaded. Please upload a file.</p>
+                }
+                else if (!fileContent.Any())
+                {
+                    <p>The uploaded file is empty or invalid format.</p>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+<InputModal Heading="View Details"
+            ShowModal="@(selectedRecord != null?true:false)">
+    @if (selectedRecord != null)
+    {
+        <div class="modal-body">
+
+            <div class="row color-odd">
+                <div class="col-3">
+                    <div class="form-group">
+                        <p><strong>Name</strong></p>
+                    </div>
+                </div>
+                <div class="col-3">
+                    <div class="form-group">
+                        <p>@selectedRecord.EmployeeName</p>
+                    </div>
+                </div>
+                <div class="col-3">
+                    <div class="form-group">
+                        <p><strong>Designation</strong></p>
+                    </div>
+                </div>
+                <div class="col-3">
+                    <div class="form-group">
+                        <p>@selectedRecord.ServiceCategory</p>
+                    </div>
+                </div>
+            </div>
+            <div class="row color-even">
+                <div class="col-3">
+                    <div class="form-group">
+                        <p><strong>Cnic</strong></p>
+                    </div>
+                </div>
+                <div class="col-3">
+                    <div class="form-group">
+                        <p>@selectedRecord.Cnic</p>
+                    </div>
+                </div>
+                <div class="col-3">
+                    <div class="form-group">
+                        <p><strong>Email</strong></p>
+                    </div>
+                </div>
+                <div class="col-3">
+                    <div class="form-group">
+                        <p>@selectedRecord.Email</p>
+                    </div>
+                </div>
+            </div>
+            <div class="row color-odd">
+                <div class="col-3">
+                    <div class="form-group">
+                        <p><strong>Joining Date</strong></p>
+                    </div>
+                </div>
+                <div class="col-3">
+                    <div class="form-group">
+                        <p>@selectedRecord.JoinedAt.ToString("dd MMM, yyyy")</p>
+                    </div>
+                </div>
+                <div class="col-3">
+                    <div class="form-group">
+                        <p><strong>Month Days</strong></p>
+                    </div>
+                </div>
+                <div class="col-3">
+                    <div class="form-group">
+                        <p>@(selectedRecord.MonthDays == 0 ? "-" : selectedRecord.MonthDays)</p>
+                    </div>
+                </div>
+            </div>
+            <div class="row color-even">
+                <div class="col-3">
+                    <div class="form-group">
+                        <p><strong>Present Days</strong></p>
+                    </div>
+                </div>
+                <div class="col-3">
+                    <div class="form-group">
+                        <p>@(selectedRecord.PresentDays == 0 ? "-" : selectedRecord.PresentDays)</p>
+                    </div>
+                </div>
+                <div class="col-3">
+                    <div class="form-group">
+                        <p><strong>Offered Salary</strong></p>
+                    </div>
+                </div>
+                <div class="col-3">
+                    <div class="form-group">
+                        <p>@(selectedRecord.OfferedSalary == 0 ? "-" : selectedRecord.OfferedSalary?.ToString("N0"))</p>
+                    </div>
+                </div>
+            </div>
+            <div class="row color-odd">
+                <div class="col-3">
+                    <div class="form-group">
+                        <p><strong>Leave/ Absent Deduction</strong></p>
+                    </div>
+                </div>
+                <div class="col-3">
+                    <div class="form-group">
+                        <p>@(selectedRecord.LeaveDeduction == 0 ? "-" : selectedRecord.LeaveDeduction?.ToString("N0"))</p>
+                    </div>
+                </div>
+                <div class="col-3">
+                    <div class="form-group">
+                        <p><strong>Basic Pay After Deduction</strong></p>
+                    </div>
+                </div>
+                <div class="col-3">
+                    <div class="form-group">
+                        <p>@(selectedRecord.BasicPayafterDeduction == 0 ? "-" : selectedRecord.BasicPayafterDeduction?.ToString("N0"))</p>
+                    </div>
+                </div>
+            </div>
+            <div class="row color-even">
+                <div class="col-3">
+                    <div class="form-group">
+                        <p><strong>Arrears</strong></p>
+                    </div>
+                </div>
+                <div class="col-3">
+                    <div class="form-group">
+                        <p>@(selectedRecord.Arrears == 0 ? "-" : selectedRecord.Arrears?.ToString("N0"))</p>
+                    </div>
+                </div>
+                <div class="col-3">
+                    <div class="form-group">
+                        <p><strong>Allowances</strong></p>
+                    </div>
+                </div>
+                <div class="col-3">
+                    <div class="form-group">
+                        <p>@(selectedRecord.Allowances == 0 ? "-" : selectedRecord.Allowances?.ToString("N0"))</p>
+                    </div>
+                </div>
+            </div>
+            <div class="row color-odd">
+                <div class="col-3">
+                    <div class="form-group">
+                        <p><strong>Advance Loan</strong></p>
+                    </div>
+                </div>
+                <div class="col-3">
+                    <div class="form-group">
+                        <p>@(selectedRecord.AdvancesLoan == 0 ? "-" : selectedRecord.AdvancesLoan?.ToString("N0"))</p>
+                    </div>
+                </div>
+                <div class="col-3">
+                    <div class="form-group">
+                        <p><strong>Gross Salary</strong></p>
+                    </div>
+                </div>
+                <div class="col-3">
+                    <div class="form-group">
+                        <p>@(selectedRecord.GrossSalary == 0 ? "-" : selectedRecord.GrossSalary?.ToString("N0"))</p>
+                    </div>
+                </div>
+            </div>
+            <div class="row color-even">
+                <div class="col-3">
+                    <div class="form-group">
+                        <p><strong>Advance Loan Deduction</strong></p>
+                    </div>
+                </div>
+                <div class="col-3">
+                    <div class="form-group">
+                        <p>@(selectedRecord.AdvancesLoanDeduction == 0 ? "-" : selectedRecord.AdvancesLoanDeduction?.ToString("N0"))</p>
+                    </div>
+                </div>
+                <div class="col-3">
+                    <div class="form-group">
+                        <p><strong>EOBI</strong></p>
+                    </div>
+                </div>
+                <div class="col-3">
+                    <div class="form-group">
+                        <p>@(selectedRecord.EOBI == 0 ? "-" : selectedRecord.EOBI?.ToString("N0"))</p>
+                    </div>
+                </div>
+            </div>
+            <div class="row color-odd">
+                <div class="col-3">
+                    <div class="form-group">
+                        <p><strong>Other Deduction</strong></p>
+                    </div>
+                </div>
+                <div class="col-3">
+                    <div class="form-group">
+                        <p>@(selectedRecord.OtherDeduction == 0 ? "-" : selectedRecord.OtherDeduction?.ToString("N0"))</p>
+                    </div>
+                </div>
+                <div class="col-3">
+                    <div class="form-group">
+                        <p><strong>WHIT Deduction</strong></p>
+                    </div>
+                </div>
+                <div class="col-3">
+                    <div class="form-group">
+                        <p>@(selectedRecord.WHITDeduction == 0 ? "-" : selectedRecord.WHITDeduction?.ToString("N0"))</p>
+                    </div>
+                </div>
+
+            </div>
+            <div class="row color-even">
+                <div class="col-3">
+                    <div class="form-group">
+                        <p><strong>Total Deduction</strong></p>
+                    </div>
+                </div>
+                <div class="col-3">
+                    <div class="form-group">
+                        <p>@(selectedRecord.TotalDeductions == 0 ? "-" : selectedRecord.TotalDeductions?.ToString("N0"))</p>
+                    </div>
+                </div>
+                <div class="col-3">
+                    <div class="form-group">
+                        <p><strong>Net Amount</strong></p>
+                    </div>
+                </div>
+                <div class="col-3">
+                    <div class="form-group">
+                        <p>@(selectedRecord.NetAmount == 0 ? "-" : selectedRecord.NetAmount?.ToString("N0"))</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    }
+</InputModal>

@@ -1,0 +1,43 @@
+@using PayslipMgtSystem.Models
+@inject NavigationManager Navigation
+
+@if (Authenticated)
+{
+    <div class="app-card">
+        <div class="empty-state">
+            <span class="empty-state__icon is-danger"><i class="fas fa-lock" aria-hidden="true"></i></span>
+            <h3>Access denied</h3>
+            <p>You don't have permission to view this page. If you believe this is a mistake, contact your system administrator.</p>
+            <a class="btn btn-primary" href="@HomeUrl">
+                <i class="fas fa-home me-1" aria-hidden="true"></i> Go to my dashboard
+            </a>
+        </div>
+    </div>
+}
+
+@code {
+    [CascadingParameter] private Task<AuthenticationState> AuthState { get; set; } = default!;
+
+    private bool Authenticated;
+    private string HomeUrl = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        var user = (await AuthState).User;
+        Authenticated = user.Identity?.IsAuthenticated == true;
+        var isEmployeeOnly = user.IsInRole(AppRoles.Employee) && !user.IsInRole(AppRoles.Admin);
+        HomeUrl = isEmployeeOnly ? "payslips" : "";
+
+        if (Authenticated && isEmployeeOnly && Navigation.ToBaseRelativePath(Navigation.Uri).Split('?')[0].Length == 0)
+        {
+            // Employees opening the site root land on their payslips
+            Navigation.NavigateTo("payslips", replace: true);
+        }
+    }
+
+    protected override void OnAfterRender(bool firstRender)
+    {
+        if (firstRender && !Authenticated)
+            Navigation.NavigateTo("/identity/account/login", true);
+    }
+}

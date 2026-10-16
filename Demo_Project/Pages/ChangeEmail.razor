@@ -1,0 +1,277 @@
+﻿@page "/changeMail"
+@attribute [Authorize(Roles = "Admin")]
+@using PayslipMgtSystem.Components
+@inject UploadFileService uploadFileService
+@inject ChangeEmailService changeEmailService
+@inject IWebHostEnvironment Environment
+@inject NavigationManager NavigationManager
+@inject IJSRuntime JSRuntime
+
+<style>
+	.input:hover {
+		cursor: pointer;
+	}
+
+	.btn:hover .email-svg {
+		fill: white;
+	}
+
+	.fixed-body {
+		position: fixed;
+		top: 0;
+		right: 0;
+		bottom: 0;
+		left: 0;
+		overflow: hidden;
+	}
+
+	.i1 {
+		cursor: pointer;
+	}
+
+		.i1:hover {
+			color: green;
+		}
+
+	.ml-5 {
+		margin-left: 20px;
+	}
+
+	.download:hover {
+		color: green;
+	}
+
+	.color-odd {
+		background-color: #F9F9F9;
+		border-radius: 0.3rem;
+		height: auto;
+		align-items: center;
+		word-break: break-all;
+	}
+
+	.color-even {
+		margin-top: 5px;
+		height: auto;
+		align-items: center;
+		word-break: break-all;
+	}
+</style>
+
+
+
+@if (filteredFileContent == null)
+{
+
+	<div class="loader"></div>
+}
+else
+{
+
+	<div class="card">
+		<div class="card-body">
+			<div class="row">
+				<div class="col-4">
+					<div class="input-group input-group-sm input-group-solid" style=" background-color: #F3F6F9; border-radius: 0.28rem; width: 100%;height:40px; margin-top:2px;">
+						<input type="search"
+							   class="form-control py-0"
+							   value="@searchQuery"
+							   id="kt_subheader_search_form"
+							   placeholder="Search..."
+							   style="font-weight: bold; color: black; opacity: 1; font-size: 0.8rem; border: 0; background-color: transparent; outline: none !important; -webkit-box-shadow: none; box-shadow: none;"
+							   @oninput="OnInput">
+					</div>
+				</div>
+				@if (filteredFileContent != null)
+				{
+					<p>Total Record: @totalcount </p>
+				}
+			</div>
+			<div class="mt-2" style="border-radius:15px;
+
+    -webkit-box-shadow: 1px -15px 22px 0px rgba(0,0,0,0.75);
+  -moz-box-shadow: 1px -15px 22px 0px rgba(0,0,0,0.75);
+   box-shadow: 1px -15px 22px 0px rgba(0,0,0,0.10);">
+				<div style="overflow-x:hidden;">
+					@if (showConfirmationPopup)
+					{
+						<div class="modal show d-block" tabindex="-1" role="dialog">
+							<div class="modal-dialog" role="document">
+								<div class="modal-content shadow-lg">
+									<div class="modal-header bg-success">
+										<h5 class="modal-title">Confirmation</h5>
+										<button type="button" class="close btn" @onclick="ClosePopup" aria-label="Close">
+											<span aria-hidden="true">&times;</span>
+										</button>
+									</div>
+									<div class="modal-body">
+										<p>Are you sure to generate the email request?</p>
+									</div>
+									<div class="modal-footer">
+										<button type="button" class="btn btn-primary" @onclick="GenerateEmailRequest">Yes</button>
+										<button type="button" class="btn btn-secondary" @onclick="ClosePopup">Cancel</button>
+									</div>
+								</div>
+							</div>
+						</div>
+					}
+					@if (!string.IsNullOrEmpty(emailStatusMessage))
+					{
+						<div class="alert alert-success" role="alert">
+							@emailStatusMessage <button type="button" class="btn btn-sm float-right pt-" @onclick="CloseMessage">x</button>
+						</div>
+					}
+					@if (!string.IsNullOrEmpty(message))
+					{
+						<div class="alert alert-success" role="alert">
+							@message
+						</div>
+					}
+					@if (filteredFileContent != null && filteredFileContent.Any())
+					{
+						<table class="table table-hover table-striped">
+							<thead>
+								<tr class="bg-success text-white">
+									<th>Name</th>
+									<th>Designation</th>
+									<th>Cnic</th>
+									<th>Email</th>
+									<th>Status</th>
+									<th>Action</th>
+								</tr>
+							</thead>
+							<tbody>
+								@foreach (var line in filteredFileContent)
+								{
+									<tr class="tr1">
+										<td>@line.EmployeeName</td>
+										<td>@line.ServiceCategory</td>
+										<td>@line.Cnic</td>
+										<td>@line.Email</td>
+										<td>
+											<div class="dropdown">
+												<button class="btn @(line.Status ? "fas fa-times-circle text-danger" : "fas fa-check-circle text-success") dropdown-toggle btn-sm" type="button" id="dropdownMenuButton" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+													@(line.Status ? "InActive" : "Active")
+												</button>
+												<div class="dropdown-menu" aria-labelledby="dropdownMenuButton">
+													<button type="button" class="dropdown-item" @onclick="() => UserStatus(line.Cnic, false)">
+														<i class="fas fa-check-circle text-success"></i> Active
+													</button>
+													<button type="button" class="dropdown-item" @onclick="() => UserStatus(line.Cnic, true)">
+														<i class="fas fa-times-circle text-danger"></i> Inactive
+													</button>
+												</div>
+											</div>
+
+
+
+										</td>
+										<td>
+											<i class="i1 fas fa-eye pt-1" @onclick="() => ShowDetails(line)" title="View" data-toggle="modal" data-target="#modal-lg"></i>
+											<i class="i1 fas fa-edit pt-1" @onclick="() => OpenEditModal(line.Email)" title="Edit" data-toggle="modal" data-target="#myModal"></i>
+
+										</td>
+									</tr>
+								}
+							</tbody>
+						</table>
+						<Pagination TotaPagesQuantity="Epagination.TotalPages" TotalCount="@totalcount" CurrentPage="Epagination.currentPage" Radius="2"
+									SelectedPage="SelectedPage" ShowrecordTable="@dTO.QuantityPerPage"></Pagination>
+					}
+					else if (fileContent == null)
+					{
+						<p>No data loaded. Please upload a file.</p>
+					}
+					else if (!fileContent.Any())
+					{
+						<p>The uploaded file is empty or invalid format.</p>
+					}
+				</div>
+			</div>
+		</div>
+	</div>
+}
+<!-- The Modal -->
+<div class="modal right fade" id="myModal">
+	<div class="modal-dialog">
+		<div class="modal-content">
+
+			<!-- Modal Header -->
+			<div class="modal-header bg-success text-white">
+				<h4 class="modal-title">Update Record</h4>
+				<button type="button" class="btn close text-white" data-dismiss="modal">&times;</button>
+			</div>
+
+			<!-- Modal body -->
+			<div class="modal-body">
+				<EditForm Model="filess" OnValidSubmit="UpdateRecord">
+					<div class="row">
+						<div class="col-12">
+							<label>Email</label>
+							<div class="form-group">
+								<input type="email" class="form-control" @bind-value="filess.Email" />
+							</div>
+						</div>
+					</div>
+					<div class="float-right mt-2">
+						<button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal">Close</button>
+						<button class="btn btn-success btn-sm" type="submit">Save</button>
+					</div>
+				</EditForm>
+			</div>
+		</div>
+	</div>
+</div>
+<InputModal Heading="View Details"
+			ShowModal="@(selectedRecord != null?true:false)">
+	@if (selectedRecord != null)
+	{
+		<div class="modal-body">
+
+			<div class="row">
+				<div class="col-12">
+					<div class="form-group">
+						<p><strong>Name</strong></p>
+					</div>
+				</div>
+				<div class="col-12">
+					<div class="form-group">
+						<p>@selectedRecord.EmployeeName</p>
+					</div>
+				</div>
+				<div class="col-12">
+					<div class="form-group">
+						<p><strong>Designation</strong></p>
+					</div>
+				</div>
+				<div class="col-12">
+					<div class="form-group">
+						<p>@selectedRecord.ServiceCategory</p>
+					</div>
+				</div>
+			</div>
+			<div class="row color-even">
+				<div class="col-12">
+					<div class="form-group">
+						<p><strong>Cnic</strong></p>
+					</div>
+				</div>
+				<div class="col-12">
+					<div class="form-group">
+						<p>@selectedRecord.Cnic</p>
+					</div>
+				</div>
+				<div class="col-12">
+					<div class="form-group">
+						<p><strong>Email</strong></p>
+					</div>
+				</div>
+				<div class="col-12">
+					<div class="form-group">
+						<p>@selectedRecord.Email</p>
+					</div>
+				</div>
+			</div>
+		</div>
+
+	}
+</InputModal>

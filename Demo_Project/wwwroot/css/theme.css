@@ -1,0 +1,118 @@
+/* ==========================================================================
+   NITB Payslip Portal – shared design tokens (used by the app shell and sign-in pages)
+   ========================================================================== */
+:root {
+    --font-sans: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+
+    --brand-950: #081737;
+    --brand-900: #0b1f4d;
+    --brand-800: #0f2a65;
+    --brand-700: #173a85;
+    --primary: #1d4ed8;
+    --primary-hover: #1e40af;
+    --primary-soft: #e8efff;
+    --accent: #f59e0b;
+
+    --bg: #f4f6fb;
+    --surface: #ffffff;
+    --surface-muted: #f8fafc;
+    --border: #e3e8f0;
+    --border-strong: #cbd5e1;
+    --text: #0f172a;
+    --text-secondary: #334155;
+    --muted: #64748b;
+    --muted-light: #94a3b8;
+
+    --success: #15803d;
+    --success-soft: #e7f6ec;
+    --warning: #b45309;
+    --warning-soft: #fdf3e1;
+    --danger: #b91c1c;
+    --danger-soft: #fdecec;
+    --info: #0369a1;
+    --info-soft: #e5f3fb;
+
+    --radius-sm: 6px;
+    --radius: 10px;
+    --radius-lg: 14px;
+    --shadow-sm: 0 1px 2px rgba(15, 23, 42, .06);
+    --shadow: 0 1px 3px rgba(15, 23, 42, .08), 0 4px 12px rgba(15, 23, 42, .05);
+    --shadow-lg: 0 12px 32px rgba(15, 23, 42, .14);
+    --focus-ring: 0 0 0 3px rgba(29, 78, 216, .25);
+    --transition: 150ms ease;
+}
+
+/* ---------- Toasts ---------- */
+.app-toasts {
+    position: fixed;
+    top: 16px;
+    right: 16px;
+    z-index: 2000;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    width: min(380px, calc(100vw - 32px));
+    pointer-events: none;
+}
+
+.app-toast {
+    pointer-events: auto;
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 14px 14px 14px 16px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: 4px solid var(--info);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-lg);
+    font-family: var(--font-sans);
+    animation: toast-in 200ms ease-out;
+}
+
+.app-toast.is-leaving { animation: toast-out 200ms ease-in forwards; }
+.app-toast__icon { font-size: 18px; margin-top: 1px; color: var(--info); }
+.app-toast__body { flex: 1; min-width: 0; }
+.app-toast__title { font-weight: 600; font-size: 14px; color: var(--text); }
+.app-toast__message { font-size: 13.5px; color: var(--text-secondary); margin-top: 2px; line-height: 1.45; word-wrap: break-word; }
+.app-toast__close {
+    border: 0;
+    background: transparent;
+    color: var(--muted);
+    font-size: 20px;
+    line-height: 1;
+    padding: 0 4px;
+    cursor: pointer;
+    border-radius: 4px;
+}
+.app-toast__close:hover { color: var(--text); background: var(--surface-muted); }
+.app-toast__close:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+
+.app-toast--success { border-left-color: var(--success); }
+.app-toast--success .app-toast__icon { color: var(--success); }
+.app-toast--warning { border-left-color: var(--accent); }
+.app-toast--warning .app-toast__icon { color: var(--warning); }
+.app-toast--error { border-left-color: var(--danger); }
+.app-toast--error .app-toast__icon { color: var(--danger); }
+
+@keyframes toast-in { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: none; } }
+@keyframes toast-out { to { opacity: 0; transform: translateX(16px); } }
+
+/* ---------- Inline button spinner ---------- */
+.btn-spinner {
+    display: inline-block;
+    width: 1em;
+    height: 1em;
+    margin-right: .55em;
+    vertical-align: -0.125em;
+    border: 2px solid currentColor;
+    border-right-color: transparent;
+    border-radius: 50%;
+    animation: btn-spin .7s linear infinite;
+}
+
+@keyframes btn-spin { to { transform: rotate(360deg); } }
+
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: 1ms !important; transition-duration: 1ms !important; }
+}

@@ -1,0 +1,10 @@
+**/bin/
+**/obj/
+**/.vs/
+**/*.user
+.git/
+.github/
+DATA/
+DockerPublish/
+Demo_Project/wwwroot/UploadFiles/*
+Demo_Project/wwwroot/Downloaded Files/

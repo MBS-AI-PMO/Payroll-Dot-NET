@@ -1,0 +1,30 @@
+<CascadingAuthenticationState>
+    <Router AppAssembly="@typeof(Program).Assembly">
+        <Found Context="routeData">
+            <AuthorizeRouteView RouteData="@routeData"
+                                DefaultLayout="@typeof(MainLayout)">
+                <NotAuthorized>
+                    <NotAuthorizedView />
+                </NotAuthorized>
+                <Authorizing>
+                    <div class="page-loading" role="status">
+                        <span class="page-loading__spinner" aria-hidden="true"></span>
+                        <span>Checking your access…</span>
+                    </div>
+                </Authorizing>
+            </AuthorizeRouteView>
+        </Found>
+        <NotFound>
+            <LayoutView Layout="@typeof(MainLayout)">
+                <div class="app-card">
+                    <div class="empty-state">
+                        <span class="empty-state__icon"><i class="fas fa-compass" aria-hidden="true"></i></span>
+                        <h3>Page not found</h3>
+                        <p>The page you are looking for doesn't exist or may have been moved.</p>
+                        <a class="btn btn-primary" href="">Back to dashboard</a>
+                    </div>
+                </div>
+            </LayoutView>
+        </NotFound>
+    </Router>
+</CascadingAuthenticationState>

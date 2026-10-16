@@ -1,0 +1,360 @@
+@page "/users"
+@using PayslipMgtSystem.Components
+@using PayslipMgtSystem.Services
+@attribute [Authorize(Roles = "Admin")]
+
+<PageTitle>User Management · NITB Payslip Portal</PageTitle>
+
+<div class="page-header">
+    <div>
+        <div class="page-header__eyebrow">Administration</div>
+        <h1>User Management</h1>
+        <p>Create employee login accounts from payroll records and manage access to the portal.</p>
+    </div>
+    <div class="page-header__actions">
+        <button type="button" class="btn btn-primary" @onclick="AskCreateUsers" disabled="@(isRunning || loadingOverview)">
+            @if (isRunning)
+            {
+                <span class="btn-spinner" aria-hidden="true"></span><span>Creating users…</span>
+            }
+            else
+            {
+                <i class="fas fa-user-plus me-1" aria-hidden="true"></i><span>Create Users</span>
+            }
+        </button>
+    </div>
+</div>
+
+@* ---------- Overview ---------- *@
+<div class="stat-grid">
+    @if (loadingOverview)
+    {
+        @for (var i = 0; i < 4; i++)
+        {
+            <div class="stat-card" aria-hidden="true">
+                <span class="skeleton skeleton--circle"></span>
+                <div style="flex:1"><span class="skeleton" style="width:60%"></span><span class="skeleton skeleton--lg mt-2" style="width:40%"></span></div>
+            </div>
+        }
+    }
+    else if (overview != null)
+    {
+        <div class="stat-card">
+            <span class="stat-card__icon" aria-hidden="true"><i class="fas fa-users"></i></span>
+            <div>
+                <div class="stat-card__label">Employees in payroll</div>
+                <div class="stat-card__value">@overview.TotalEmployees.ToString("N0")</div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <span class="stat-card__icon is-success" aria-hidden="true"><i class="fas fa-user-check"></i></span>
+            <div>
+                <div class="stat-card__label">Employee accounts</div>
+                <div class="stat-card__value">@overview.EmployeeAccounts.ToString("N0")</div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <span class="stat-card__icon is-warning" aria-hidden="true"><i class="fas fa-hourglass-half"></i></span>
+            <div>
+                <div class="stat-card__label">Awaiting password setup</div>
+                <div class="stat-card__value">@overview.PendingSetup.ToString("N0")</div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <span class="stat-card__icon is-neutral" aria-hidden="true"><i class="fas fa-user-slash"></i></span>
+            <div>
+                <div class="stat-card__label">Without an account</div>
+                <div class="stat-card__value">@overview.WithoutAccount.ToString("N0")</div>
+            </div>
+        </div>
+    }
+</div>
+
+@* ---------- Bulk job progress ---------- *@
+@if (isRunning)
+{
+    <div class="progress-panel" role="status" aria-live="polite">
+        <span class="progress-panel__spinner" aria-hidden="true"></span>
+        <div class="progress-panel__body">
+            <h3>Creating employee accounts…</h3>
+            <p>Accounts are being created. Please keep this page open until it finishes.</p>
+            <div class="progress-track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="@ProgressPercent">
+                <span style="width:@(ProgressPercent)%"></span>
+            </div>
+            <div class="progress-meta">
+                <span>@(string.IsNullOrEmpty(progress?.CurrentEmployee) ? "Preparing employee list…" : $"Last processed: {progress!.CurrentEmployee}")</span>
+                <span>@(progress?.Processed ?? 0) of @(progress?.Total ?? 0) · @ProgressPercent%</span>
+            </div>
+        </div>
+    </div>
+}
+
+@* ---------- Last run summary ---------- *@
+@if (lastResult != null)
+{
+    <div class="app-card">
+        <div class="app-card__header">
+            <div>
+                <h2 class="app-card__title">
+                    <i class="fas fa-clipboard-check me-1 text-success" aria-hidden="true"></i>
+                    Account creation summary
+                </h2>
+                <p class="app-card__subtitle">
+                    Completed @lastResult.CompletedAt.ToString("dd MMM yyyy, hh:mm tt")@(lastResult.WasCancelled ? " · stopped before finishing" : "")
+                </p>
+            </div>
+            <button type="button" class="btn btn-sm btn-light" @onclick="() => lastResult = null">
+                <i class="fas fa-times me-1" aria-hidden="true"></i> Dismiss
+            </button>
+        </div>
+        <div class="app-card__body">
+            <div class="stat-grid mb-3">
+                <button type="button" class="stat-card @(resultFilter == null ? "is-active" : "")" @onclick="() => resultFilter = null">
+                    <span class="stat-card__icon" aria-hidden="true"><i class="fas fa-users"></i></span>
+                    <div><div class="stat-card__label">Total Employees</div><div class="stat-card__value">@lastResult.TotalEmployees</div></div>
+                </button>
+                <button type="button" class="stat-card @(resultFilter == BulkUserStatus.Created ? "is-active" : "")" @onclick="() => resultFilter = BulkUserStatus.Created">
+                    <span class="stat-card__icon is-success" aria-hidden="true"><i class="fas fa-user-plus"></i></span>
+                    <div><div class="stat-card__label">Users Created</div><div class="stat-card__value">@lastResult.Created</div></div>
+                </button>
+                <button type="button" class="stat-card @(resultFilter == BulkUserStatus.AlreadyExists ? "is-active" : "")" @onclick="() => resultFilter = BulkUserStatus.AlreadyExists">
+                    <span class="stat-card__icon is-info" aria-hidden="true"><i class="fas fa-user-check"></i></span>
+                    <div><div class="stat-card__label">Already Existing</div><div class="stat-card__value">@lastResult.AlreadyExisting</div></div>
+                </button>
+                <button type="button" class="stat-card @(resultFilter == BulkUserStatus.MissingEmail ? "is-active" : "")" @onclick="() => resultFilter = BulkUserStatus.MissingEmail">
+                    <span class="stat-card__icon is-warning" aria-hidden="true"><i class="fas fa-envelope-open"></i></span>
+                    <div><div class="stat-card__label">Missing Email</div><div class="stat-card__value">@lastResult.MissingEmail</div></div>
+                </button>
+                <button type="button" class="stat-card @(resultFilter == BulkUserStatus.Failed ? "is-active" : "")" @onclick="() => resultFilter = BulkUserStatus.Failed">
+                    <span class="stat-card__icon is-danger" aria-hidden="true"><i class="fas fa-exclamation-circle"></i></span>
+                    <div><div class="stat-card__label">Failed</div><div class="stat-card__value">@lastResult.Failed</div></div>
+                </button>
+            </div>
+
+            @if (lastResult.InvitationsFailed > 0)
+            {
+                <div class="alert alert-warning d-flex gap-2 align-items-start" role="alert">
+                    <i class="fas fa-exclamation-triangle mt-1" aria-hidden="true"></i>
+                    <div>
+                        <strong>@lastResult.InvitationsFailed invitation email(s) could not be sent.</strong>
+                        These accounts were created. Use <em>Resend invite</em> in the accounts list below once the email service is available.
+                    </div>
+                </div>
+            }
+
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
+                <strong class="text-secondary" style="font-size:14px">
+                    @(resultFilter switch
+                    {
+                        BulkUserStatus.Created => "Accounts created",
+                        BulkUserStatus.AlreadyExists => "Employees who already had an account",
+                        BulkUserStatus.MissingEmail => "Employees without an email address",
+                        BulkUserStatus.Failed => "Records that failed",
+                        _ => "All processed employees"
+                    }) (@FilteredResults.Count())
+                </strong>
+                @if (lastResult.Failed + lastResult.MissingEmail > 0 && resultFilter == null)
+                {
+                    <button type="button" class="btn btn-sm btn-outline-primary" @onclick="() => resultFilter = BulkUserStatus.Failed">
+                        <i class="fas fa-filter me-1" aria-hidden="true"></i> Show failed records
+                    </button>
+                }
+            </div>
+
+            @if (!FilteredResults.Any())
+            {
+                <div class="empty-state py-4">
+                    <span class="empty-state__icon is-success"><i class="fas fa-check" aria-hidden="true"></i></span>
+                    <h3>Nothing to show</h3>
+                    <p>No employees fall into this category.</p>
+                </div>
+            }
+            else
+            {
+                <div class="app-card mb-0" style="box-shadow:none">
+                    <div class="data-table-wrap" style="max-height:420px;overflow-y:auto">
+                        <table class="data-table data-table--stack">
+                            <thead>
+                                <tr>
+                                    <th scope="col">Employee</th>
+                                    <th scope="col">Email</th>
+                                    <th scope="col">Result</th>
+                                    <th scope="col">Details</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var r in FilteredResults)
+                                {
+                                    <tr>
+                                        <td data-label="Employee">
+                                            <span class="cell-primary">@(r.EmployeeName ?? "Unnamed employee")</span>
+                                            <span class="cell-secondary">@(r.Cnic ?? "No CNIC")</span>
+                                        </td>
+                                        <td data-label="Email">@(string.IsNullOrWhiteSpace(r.Email) ? "—" : r.Email)</td>
+                                        <td data-label="Result">
+                                            @switch (r.Status)
+                                            {
+                                                case BulkUserStatus.Created:
+                                                    <span class="pill @(r.InvitationFailed ? "is-warning" : "is-success")">@(r.InvitationFailed ? "Created · invite failed" : "Created")</span>
+                                                    break;
+                                                case BulkUserStatus.AlreadyExists:
+                                                    <span class="pill is-info">Already exists</span>
+                                                    break;
+                                                case BulkUserStatus.MissingEmail:
+                                                    <span class="pill is-warning">Missing email</span>
+                                                    break;
+                                                default:
+                                                    <span class="pill is-danger">Failed</span>
+                                                    break;
+                                            }
+                                        </td>
+                                        <td data-label="Details" class="cell-full">@r.Reason</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+}
+
+@* ---------- Employee accounts ---------- *@
+<div class="app-card">
+    <div class="app-card__header">
+        <div>
+            <h2 class="app-card__title">Employee accounts</h2>
+            <p class="app-card__subtitle">Employees who can sign in to view their payslips.</p>
+        </div>
+        <div class="search-input" style="min-width:min(300px,100%)">
+            <i class="fas fa-search" aria-hidden="true"></i>
+            <input type="search" class="form-control" placeholder="Search name, email or CNIC" aria-label="Search employee accounts"
+                   value="@search" @oninput="OnSearchInput" />
+        </div>
+    </div>
+
+    @if (loadingAccounts && accounts == null)
+    {
+        <div class="app-card__body">
+            @for (var i = 0; i < 5; i++)
+            {
+                <div class="d-flex gap-3 align-items-center py-2" aria-hidden="true">
+                    <span class="skeleton" style="width:30%"></span>
+                    <span class="skeleton" style="width:30%"></span>
+                    <span class="skeleton" style="width:20%"></span>
+                </div>
+            }
+        </div>
+    }
+    else if (accounts == null || accounts.TotalCount == 0)
+    {
+        <div class="empty-state">
+            <span class="empty-state__icon"><i class="fas fa-user-friends" aria-hidden="true"></i></span>
+            @if (!string.IsNullOrWhiteSpace(search))
+            {
+                <h3>No matching accounts</h3>
+                <p>No employee accounts match "@search". Try a different name, email or CNIC.</p>
+            }
+            else
+            {
+                <h3>No employee accounts yet</h3>
+                <p>Click <strong>Create Users</strong> to create accounts for every employee in the payroll data. No email is sent; employees set their password using <em>Forgot password?</em> on the login page.</p>
+            }
+        </div>
+    }
+    else
+    {
+        <div class="data-table-wrap" style="@(loadingAccounts ? "opacity:.6" : "")">
+            <table class="data-table data-table--stack">
+                <thead>
+                    <tr>
+                        <th scope="col">Employee</th>
+                        <th scope="col">Email</th>
+                        <th scope="col">Created</th>
+                        <th scope="col">Status</th>
+                        <th scope="col" class="actions"><span class="visually-hidden">Actions</span></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var a in accounts.Items)
+                    {
+                        <tr>
+                            <td data-label="Employee">
+                                <span class="cell-primary">@(a.Name ?? "—")</span>
+                                <span class="cell-secondary">@(a.Cnic ?? "No CNIC linked")</span>
+                            </td>
+                            <td data-label="Email">@a.Email</td>
+                            <td data-label="Created">@a.CreatedAt.ToString("dd MMM yyyy")</td>
+                            <td data-label="Status">
+                                @if (a.IsLockedOut)
+                                {
+                                    <span class="pill is-danger">Locked</span>
+                                }
+                                else if (a.PasswordSet)
+                                {
+                                    <span class="pill is-success">Active</span>
+                                }
+                                else
+                                {
+                                    <span class="pill is-warning">Pending setup</span>
+                                }
+                            </td>
+                            <td class="actions">
+                                <button type="button" class="btn btn-sm btn-light" @onclick="() => Resend(a)" disabled="@(resendingId != null)"
+                                        title="@(a.PasswordSet ? "Email a password reset link" : "Email the set-password invitation again")">
+                                    @if (resendingId == a.Id)
+                                    {
+                                        <span class="btn-spinner" aria-hidden="true"></span><span>Sending…</span>
+                                    }
+                                    else
+                                    {
+                                        <i class="fas fa-paper-plane me-1" aria-hidden="true"></i><span>@(a.PasswordSet ? "Send reset link" : "Resend invite")</span>
+                                    }
+                                </button>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+        <div class="app-card__footer">
+            <span>Showing @((accounts.Page - 1) * accounts.PageSize + 1)–@Math.Min(accounts.Page * accounts.PageSize, accounts.TotalCount) of @accounts.TotalCount accounts</span>
+            @if (accounts.TotalPages > 1)
+            {
+                <nav aria-label="Employee accounts pages">
+                    <ul class="pagination pagination-sm">
+                        <li class="page-item @(accounts.Page <= 1 ? "disabled" : "")">
+                            <button type="button" class="page-link" @onclick="() => LoadAccounts(accounts.Page - 1)" aria-label="Previous page"><i class="fas fa-chevron-left" aria-hidden="true"></i></button>
+                        </li>
+                        <li class="page-item disabled"><span class="page-link">@accounts.Page / @accounts.TotalPages</span></li>
+                        <li class="page-item @(accounts.Page >= accounts.TotalPages ? "disabled" : "")">
+                            <button type="button" class="page-link" @onclick="() => LoadAccounts(accounts.Page + 1)" aria-label="Next page"><i class="fas fa-chevron-right" aria-hidden="true"></i></button>
+                        </li>
+                    </ul>
+                </nav>
+            }
+        </div>
+    }
+</div>
+
+<AppConfirmDialog Visible="showConfirm"
+                  Title="Create employee accounts?"
+                  Subtitle="This runs for every employee in the payroll data."
+                  Icon="fa-user-plus"
+                  ConfirmText="Yes, create users"
+                  ConfirmIcon="fa-check"
+                  OnClose="OnConfirmClosed">
+    <p class="mb-2">For each employee without an account, the portal will:</p>
+    <ul class="mb-2 ps-3">
+        <li>create a login using the employee's email address, and</li>
+        <li>link it to their payslips by CNIC.</li>
+    </ul>
+    <p class="mb-0 text-muted" style="font-size:13px">
+        Employees who already have an account are skipped. Employees with a missing or invalid email are reported so you can fix them.
+        @if (overview != null)
+        {
+            <text> Up to <strong>@overview.WithoutAccount.ToString("N0")</strong> accounts may be created.</text>
+        }
+    </p>
+</AppConfirmDialog>

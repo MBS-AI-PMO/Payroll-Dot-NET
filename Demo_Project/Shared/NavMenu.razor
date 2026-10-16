@@ -1,0 +1,60 @@
+@using PayslipMgtSystem.Models
+
+<div class="nav-brand">
+    <span class="nav-brand__logo"><img src="solo.png" alt="Solochoicez" /></span>
+    <span class="nav-brand__text">
+        <span class="nav-brand__title">HRMS Portal</span>
+    </span>
+    <button type="button" class="nav-close" @onclick="() => OnClose.InvokeAsync()" aria-label="Close navigation" title="Close navigation">
+        <i class="fas fa-times" aria-hidden="true"></i>
+    </button>
+</div>
+
+<nav class="nav-scroll" @onclick="() => OnNavigate.InvokeAsync()">
+    <AuthorizeView>
+        <Authorized>
+            @if (context.User.IsInRole(AppRoles.Admin))
+            {
+                <div class="nav-section">Payroll</div>
+                <NavLink class="nav-link-item" href="" Match="NavLinkMatch.All">
+                    <i class="fas fa-users" aria-hidden="true"></i><span>Employees Mgt</span>
+                </NavLink>
+                <NavLink class="nav-link-item" href="Email" Match="NavLinkMatch.All">
+                    <i class="fas fa-file-invoice-dollar" aria-hidden="true"></i><span>Payslip Mgt</span>
+                </NavLink>
+                <NavLink class="nav-link-item" href="taxCertificate" Match="NavLinkMatch.All">
+                    <i class="fas fa-receipt" aria-hidden="true"></i><span>ITC Mgt</span>
+                </NavLink>
+
+                <div class="nav-section">Administration</div>
+                <NavLink class="nav-link-item" href="users" Match="NavLinkMatch.All">
+                    <i class="fas fa-user-shield" aria-hidden="true"></i><span>User Management</span>
+                </NavLink>
+                <NavLink class="nav-link-item" href="changeMail" Match="NavLinkMatch.All">
+                    <i class="fas fa-envelope" aria-hidden="true"></i><span>Email Config</span>
+                </NavLink>
+            }
+            else if (context.User.IsInRole(AppRoles.Employee))
+            {
+                <div class="nav-section">My Account</div>
+                <NavLink class="nav-link-item" href="payslips" Match="NavLinkMatch.Prefix">
+                    <i class="fas fa-file-invoice-dollar" aria-hidden="true"></i><span>Payslip</span>
+                </NavLink>
+                <NavLink class="nav-link-item" href="tax-certificates" Match="NavLinkMatch.Prefix">
+                    <i class="fas fa-receipt" aria-hidden="true"></i><span>Tax Certificate (ITC)</span>
+                </NavLink>
+            }
+        </Authorized>
+    </AuthorizeView>
+</nav>
+
+<div class="nav-footer">
+    <a class="nav-link-item" href="Identity/Account/LogOut">
+        <i class="fas fa-sign-out-alt" aria-hidden="true"></i><span>Sign out</span>
+    </a>
+</div>
+
+@code {
+    [Parameter] public EventCallback OnNavigate { get; set; }
+    [Parameter] public EventCallback OnClose { get; set; }
+}

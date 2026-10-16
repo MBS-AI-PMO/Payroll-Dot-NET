@@ -1,0 +1,164 @@
+﻿@if (TotalCount > 50)
+{
+    <nav aria-label="Page navigation example">
+        <ul class="pagination d-flex  float-right"> 
+
+            @foreach (var link in links)
+            {
+                <li @onclick="@(() => SelectedPageInternal(link))"
+                    style="cursor: pointer;"
+                    class="page-item @(link.Enabled ? null : "disabled") @(link.Active ? "active" : null)">
+                    <span class="page-link" href="#">@link.Text</span>
+                </li>
+            }
+        </ul>
+    </nav>
+
+}
+
+<PaginationLoader Isvisible="IsLoader"></PaginationLoader>
+
+
+@code {
+    public bool IsLoader { get; set; } = false;
+
+    [Parameter] public int CurrentPage { get; set; } = 1;
+    [Parameter] public int TotaPagesQuantity { get; set; }
+
+    [Parameter] public int TotalCount { get; set; }
+    [Parameter] public int Radius { get; set; } = 3;
+
+
+    [Parameter] public EventCallback<int> SelectedPage { get; set; }
+    [Parameter] public int ShowrecordTable { get; set; } = 10;
+
+    public int startCount;
+    public int EndCount;
+    public string paginationcounter;
+    List<LinkModel> links;
+    protected override void OnParametersSet()
+    {
+        LoadPages();
+        if (EndCount > TotalCount)
+        {
+            paginationcounter = "Showing " + startCount + " to " + TotalCount + " of " + TotalCount + " entries";
+
+        }
+        else
+        {
+            paginationcounter = "Showing " + startCount + " to " + EndCount + " of " + TotalCount + " entries";
+
+        }
+    }
+
+    private async Task SelectedPageInternal(LinkModel link)
+    {
+        IsLoader = true;
+        if (link.Page == CurrentPage)
+        {
+            IsLoader = false;
+            return;
+        }
+
+        if (!link.Enabled)
+        {
+            IsLoader = false;
+            return;
+        }
+
+        CurrentPage = link.Page;
+        await SelectedPage.InvokeAsync(link.Page);
+        IsLoader = false;
+        StateHasChanged();
+    }
+
+    private void LoadPages()
+    {
+
+        links = new List<LinkModel>();
+        var isPreviousPageLinkEnabled = CurrentPage != 1;
+        var Onepage = CurrentPage != 1;
+        var previousPage = CurrentPage - 1;
+        links.Add(new LinkModel(previousPage, isPreviousPageLinkEnabled, "Previous"));
+        if (CurrentPage == 1)
+        {
+            links.Add(new LinkModel(1, true, "1", true));
+        }
+        else
+        {
+            links.Add(new LinkModel(1, true, "1"));
+        }
+        if (Radius < CurrentPage)
+        {
+            links.Add(new LinkModel(previousPage, isPreviousPageLinkEnabled, "..."));
+        }
+        if (TotaPagesQuantity > 1)
+        {
+            for (int i = 2; i <= TotaPagesQuantity - 1; i++)
+            {
+                if (i >= CurrentPage - Radius && i <= CurrentPage + Radius)
+                {
+                    links.Add(new LinkModel(i) { Active = CurrentPage == i });
+                }
+            }
+        }
+
+
+        startCount = ((CurrentPage - 1) * ShowrecordTable) + 1;
+        EndCount = CurrentPage * ShowrecordTable;
+        var isNextPageLinkEnabled = CurrentPage != TotaPagesQuantity;
+        var nextPage = CurrentPage + 1;
+
+        if ((TotaPagesQuantity - CurrentPage) > Radius)
+        {
+            links.Add(new LinkModel(nextPage, isNextPageLinkEnabled, "...."));
+        }
+        //links.Add(new LinkModel(nextPage, isNextPageLinkEnabled, "...."));
+
+        if (TotaPagesQuantity == CurrentPage)
+        {
+            if (TotaPagesQuantity > 1)
+            {
+                links.Add(new LinkModel(TotaPagesQuantity, true, TotaPagesQuantity.ToString(), true));
+            }
+        }
+        else
+        {
+            if (TotaPagesQuantity > 1)
+            {
+                links.Add(new LinkModel(TotaPagesQuantity, isNextPageLinkEnabled, TotaPagesQuantity.ToString()));
+            }
+        }
+        links.Add(new LinkModel(nextPage, isNextPageLinkEnabled, "Next"));
+    }
+
+    class LinkModel
+    {
+        public LinkModel(int page)
+            : this(page, true) { }
+
+        public LinkModel(int page, bool enabled)
+            : this(page, enabled, page.ToString())
+        { }
+
+        public LinkModel(int page, bool enabled, string text)
+        {
+            Page = page;
+            Enabled = enabled;
+            Text = text;
+        }
+
+        public LinkModel(int page, bool enabled, string text, bool active)
+        {
+            Page = page;
+            Enabled = enabled;
+            Text = text;
+            Active = active;
+        }
+
+
+        public string Text { get; set; }
+        public int Page { get; set; }
+        public bool Enabled { get; set; } = true;
+        public bool Active { get; set; } = false;
+    }}

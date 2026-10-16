@@ -1,0 +1,9 @@
+global using PayslipMgtSystem.Models;
+global using PayslipMgtSystem.ViewModel;
+global using PayslipMgtSystem.Services.Background;
+global using PayslipMgtSystem.Services.Email;
+global using PayslipMgtSystem.Services.Payroll;
+global using PayslipMgtSystem.Services.Pdf;
+global using PayslipMgtSystem.Services.Pdf.Templates;
+global using PayslipMgtSystem.Services.UI;
+global using PayslipMgtSystem.Services.Users;

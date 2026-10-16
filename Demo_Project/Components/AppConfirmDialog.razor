@@ -1,0 +1,64 @@
+@if (Visible)
+{
+    <div class="app-dialog-backdrop" @onclick="Cancel" @onkeydown="OnKeyDown">
+        <div class="app-dialog" role="dialog" aria-modal="true" aria-labelledby="@TitleId" @onclick:stopPropagation="true">
+            <div class="app-dialog__header">
+                <span class="stat-card__icon @IconTone" aria-hidden="true"><i class="fas @Icon"></i></span>
+                <div>
+                    <h2 id="@TitleId">@Title</h2>
+                    @if (!string.IsNullOrEmpty(Subtitle))
+                    {
+                        <p>@Subtitle</p>
+                    }
+                </div>
+                <button type="button" class="app-dialog__close" aria-label="Close" @onclick="Cancel">&times;</button>
+            </div>
+            <div class="app-dialog__body">
+                @ChildContent
+            </div>
+            <div class="app-dialog__footer">
+                <button type="button" class="btn btn-light" @onclick="Cancel">@CancelText</button>
+                <button type="button" class="btn @ConfirmClass" @onclick="Confirm" @ref="confirmButton">
+                    @if (!string.IsNullOrEmpty(ConfirmIcon))
+                    {
+                        <i class="fas @ConfirmIcon me-1" aria-hidden="true"></i>
+                    }
+                    @ConfirmText
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public bool Visible { get; set; }
+    [Parameter] public string Title { get; set; } = "Are you sure?";
+    [Parameter] public string? Subtitle { get; set; }
+    [Parameter] public string Icon { get; set; } = "fa-question-circle";
+    [Parameter] public string IconTone { get; set; } = "";
+    [Parameter] public string ConfirmText { get; set; } = "Confirm";
+    [Parameter] public string? ConfirmIcon { get; set; }
+    [Parameter] public string ConfirmClass { get; set; } = "btn-primary";
+    [Parameter] public string CancelText { get; set; } = "Cancel";
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public EventCallback<bool> OnClose { get; set; }
+
+    private readonly string TitleId = $"dlg-{Guid.NewGuid():N}";
+    private ElementReference confirmButton;
+    private bool wasVisible;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (Visible && !wasVisible)
+        {
+            try { await confirmButton.FocusAsync(); } catch { /* element not yet attached */ }
+        }
+        wasVisible = Visible;
+    }
+
+    private Task Confirm() => OnClose.InvokeAsync(true);
+
+    private Task Cancel() => OnClose.InvokeAsync(false);
+
+    private Task OnKeyDown(KeyboardEventArgs e) => e.Key == "Escape" ? Cancel() : Task.CompletedTask;
+}
